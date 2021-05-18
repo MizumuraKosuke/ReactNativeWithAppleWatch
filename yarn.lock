@@ -5446,6 +5446,10 @@ react-is@^16.8.1:
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-16.13.1.tgz#789729a4dc36de2999dc156dd6c1d9c18cea56a4"
   integrity sha512-24e6ynE2H+OKt4kqsOvNd8kBpV65zoxbA4BVsEOB3ARVWQki/DHzaUoC5KuON/BiccDaCCTZBuOcfZs70kR8bQ==
 
+"react-native-beacons-manager@git://github.com/MacKentoch/react-native-beacons-manager.git#53c1bda":
+  version "1.1.0"
+  resolved "git://github.com/MacKentoch/react-native-beacons-manager.git#53c1bda81f032e775f29327a7bab28a14528cf39"
+
 react-native-codegen@^0.0.6:
   version "0.0.6"
   resolved "https://registry.yarnpkg.com/react-native-codegen/-/react-native-codegen-0.0.6.tgz#b3173faa879cf71bfade8d030f9c4698388f6909"
@@ -5454,6 +5458,11 @@ react-native-codegen@^0.0.6:
     flow-parser "^0.121.0"
     jscodeshift "^0.11.0"
     nullthrows "^1.1.1"
+
+react-native-nfc-manager@^3.5.0:
+  version "3.5.0"
+  resolved "https://registry.yarnpkg.com/react-native-nfc-manager/-/react-native-nfc-manager-3.5.0.tgz#4261da8eeb423482afce8ce0200b4f8205b7a614"
+  integrity sha512-JZOr9cLFEBEMfsl4XZ/uls9NOhX1FCfml5HWnBDt7or+BgdKfai9U/NSbAJunuK93WUMVXE21v2F3xrApY7yTw==
 
 react-native-watch-connectivity@^1.0.3:
   version "1.0.3"
