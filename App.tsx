@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react'
-import type { Node } from 'react'
 import {
   SafeAreaView,
   ScrollView,
@@ -7,7 +6,6 @@ import {
   Text,
   View,
   TouchableOpacity,
-  DeviceEventEmitter,
 } from 'react-native'
 import {
   sendMessage,
@@ -15,15 +13,19 @@ import {
   getReachability,
 } from 'react-native-watch-connectivity'
 import NfcManager, { NfcEvents } from 'react-native-nfc-manager'
-import Beacons from 'react-native-beacons-manager'
+import NoTypeBeacons from 'react-native-beacons-manager'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const Beacons: any = NoTypeBeacons
 
 const region = {
   identifier: 'ibeacon-test',
   uuid: '9c8a7cea-b59d-4f74-843a-0f84a567b131',
 }
 
-const App: () => Node = () => {
+const App = () => {
   const [ messages, setMessages ] = useState([])
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const messagesRef = useRef<any>([])
 
   const [ distance, setDistance ] = useState(0)
@@ -37,6 +39,7 @@ const App: () => Node = () => {
 
   const initNfc = async () => {
     await NfcManager.start()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     NfcManager.setEventListener(NfcEvents.DiscoverTag, (tag: any) => {
       console.log(tag)
       tagFound.current = tag
@@ -70,12 +73,14 @@ const App: () => Node = () => {
 
     Beacons.BeaconsEventEmitter.addListener(
       'didDetermineState',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (data: any) => {
         console.log('didDetermineState', data)
       },
     )
     Beacons.BeaconsEventEmitter.addListener(
       'beaconsDidRange',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (data: any) => {
         if (!!data && data.beacons.length > 0) {
           setDistance(data.beacons[0].distance)
