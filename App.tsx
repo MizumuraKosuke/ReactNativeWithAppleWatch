@@ -1,9 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import {
-  SafeAreaView,
   ScrollView,
   StatusBar,
-  Text,
   View,
   TouchableOpacity,
 } from 'react-native'
@@ -14,6 +12,14 @@ import {
 } from 'react-native-watch-connectivity'
 import NfcManager, { NfcEvents } from 'react-native-nfc-manager'
 import NoTypeBeacons from 'react-native-beacons-manager'
+import EStyleSheet from 'react-native-extended-stylesheet'
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
+
+import './src/constants/estyles'
+
+import Spacer from './src/components/spacer'
+import { H1, H2, H3, H4 } from './src/components/text'
+import globalStyles from './src/utils/style'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Beacons: any = NoTypeBeacons
@@ -112,7 +118,7 @@ const App = () => {
       setMessages(messagesRef.current)
 
       if (reply) {
-        reply({ text: 'Thanks watch!' })
+        reply({ H3: 'Thanks watch!' })
       }
     })
 
@@ -124,60 +130,93 @@ const App = () => {
   }, [])
 
   return (
-    <View style={{ backgroundColor: '#fff', flex: 1 }}>
-      <SafeAreaView />
-      <StatusBar />
-      <ScrollView>
-        <Text>React Native with watch app</Text>
-        <TouchableOpacity
-          onPress={readNfc}
-          style={{
-            backgroundColor: '#f00',
-            padding: 20,
-            margin: 20,
-          }}
-        >
-          <Text>Read NFC</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={startBeacon}
-          style={{
-            backgroundColor: '#f00',
-            padding: 20,
-            margin: 20,
-          }}
-        >
-          <Text>Start Beacon</Text>
-        </TouchableOpacity>
-        <View
-          style={{
-            backgroundColor: '#eee',
-            padding: 10,
-            marginHorizontal: 80,
-          }}
-        >
-          <Text>distance: {distance}</Text>
-        </View>
-        <TouchableOpacity
-          onPress={send}
-          style={{
-            backgroundColor: '#f00',
-            padding: 20,
-            margin: 20,
-          }}
-        >
-          <Text>Send</Text>
-        </TouchableOpacity>
-        {
-          messages.map((mes, i) => (
-            <View key={i}>
-              <Text>{mes}</Text>
+    <SafeAreaProvider>
+      <View style={{ backgroundColor: '#fff', flex: 1 }}>
+        <StatusBar />
+        <ScrollView style={globalStyles.flex1}>
+          <SafeAreaView>
+            <View
+              style={[
+                globalStyles.flex1,
+                globalStyles.alignCenter,
+                globalStyles.justifyCenter,
+              ]}
+            >
+              <View>
+                <Spacer height="3rem" />
+                <H1>React Native with watch app</H1>
+                <Spacer height="2rem" />
+                <H2 style={styles.titleTxt}>NFC</H2>
+                <Spacer height="1rem" />
+                <TouchableOpacity
+                  onPress={readNfc}
+                  style={[ styles.btn, globalStyles.alignCenter, globalStyles.justifyCenter ]}
+                >
+                  <H3 style={styles.btnTxt}>Read NFC</H3>
+                </TouchableOpacity>
+                <Spacer height="3rem" />
+                <H2 style={styles.titleTxt}>Beacon</H2>
+                <Spacer height="1rem" />
+                <TouchableOpacity
+                  onPress={startBeacon}
+                  style={[ styles.btn, globalStyles.alignCenter, globalStyles.justifyCenter ]}
+                >
+                  <H3 style={styles.btnTxt}>Start Beacon</H3>
+                </TouchableOpacity>
+                <Spacer height="1rem" />
+                <View style={styles.response}>
+                  <H3>distance: {distance}</H3>
+                </View>
+                <Spacer height="3rem" />
+                <H2 style={styles.titleTxt}>With Watch App</H2>
+                <Spacer height="1rem" />
+                <TouchableOpacity
+                  onPress={send}
+                  style={[ styles.btn, globalStyles.alignCenter, globalStyles.justifyCenter ]}
+                >
+                  <H3 style={styles.btnTxt}>Watch Message Send</H3>
+                </TouchableOpacity>
+                <Spacer height="1rem" />
+                <H4>Message from Watch App</H4>
+                <Spacer height=".5rem" />
+                <View style={styles.response}>
+                  {
+                    messages.map((mes, i) => (
+                      <View key={i}>
+                        <H3>{mes}</H3>
+                      </View>
+                    ))
+                  }
+                </View>
+              </View>
             </View>
-          ))
-        }
-      </ScrollView>
-    </View>
+          </SafeAreaView>
+        </ScrollView>
+      </View>
+    </SafeAreaProvider>
   )
 }
+
+const styles = EStyleSheet.create({
+  titleTxt: {
+    color: '#ff743d',
+  },
+  btn: {
+    backgroundColor: '#08b79b',
+    borderRadius: 22,
+    paddingVertical: '.75rem',
+    paddingHorizontal: '2rem',
+    minWidth: '7rem',
+  },
+  btnTxt: {
+    color: '$white',
+  },
+  response: {
+    backgroundColor: '#eaeaea',
+    borderRadius: 10,
+    paddingVertical: '.75rem',
+    paddingHorizontal: '1rem',
+  },
+})
 
 export default App
