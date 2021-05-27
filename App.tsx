@@ -4,13 +4,14 @@ import {
   StatusBar,
   View,
   TouchableOpacity,
+  Platform,
 } from 'react-native'
 import {
   sendMessage,
   watchEvents,
   getReachability,
 } from 'react-native-watch-connectivity'
-import NfcManager, { NfcEvents } from 'react-native-nfc-manager'
+import NfcManager, { NfcEvents, NfcTech, Ndef } from 'react-native-nfc-manager'
 import NoTypeBeacons from 'react-native-beacons-manager'
 import EStyleSheet from 'react-native-extended-stylesheet'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
@@ -35,8 +36,7 @@ const App = () => {
   const messagesRef = useRef<any>([])
 
   const [ distance, setDistance ] = useState(0)
-
-  const tagFound = useRef(null)
+  const [ tagMessages, setTagMessages ] = useState([])
 
   const cleanUpNfc = () => {
     NfcManager.setEventListener(NfcEvents.DiscoverTag, null)
@@ -45,21 +45,55 @@ const App = () => {
 
   const initNfc = async () => {
     await NfcManager.start()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    NfcManager.setEventListener(NfcEvents.DiscoverTag, (tag: any) => {
-      console.log(tag)
-      tagFound.current = tag
-      NfcManager.setAlertMessageIOS('NDEF tag found')
-      NfcManager.unregisterTagEvent().catch(() => 0)
-    })
-
-    NfcManager.setEventListener(NfcEvents.SessionClosed, () => {
-      cleanUpNfc()
-    })
   }
 
   const readNfc = async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    NfcManager.setEventListener(NfcEvents.DiscoverTag, async (tag: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mes = tag.ndefMessage.map((m: any) => Ndef.uri.decodePayload(m.payload))
+      setTagMessages(mes)
+      if (Platform.OS === 'ios') {
+        await NfcManager.setAlertMessageIOS('NDEF tag found')
+      }
+      NfcManager.unregisterTagEvent().catch(() => 0)
+    })
+    NfcManager.setEventListener(NfcEvents.SessionClosed, () => {
+      cleanUpNfc()
+    })
     NfcManager.registerTagEvent()
+  }
+
+  const writeNfc = async () => {
+    let result = false
+
+    try {
+      await NfcManager.requestTechnology(NfcTech.Ndef, {
+        alertMessage: 'Ready to write some NDEF',
+      })
+
+      const bytes = Ndef.encodeMessage([
+        Ndef.uriRecord('https://scatter-sample-kosuke.vercel.app'),
+      ])
+
+      if (bytes) {
+        await NfcManager.ndefHandler
+          .writeNdefMessage(bytes)
+
+        if (Platform.OS === 'ios') {
+          await NfcManager.setAlertMessageIOS('Successfully write NDEF')
+        }
+      }
+
+      setTagMessages([])
+      result = true
+    }
+    catch (e) {
+      console.log(e)
+    }
+
+    NfcManager.cancelTechnologyRequest().catch(() => 0)
+    return result
   }
 
   const cleanBeacon = () => {
@@ -95,11 +129,11 @@ const App = () => {
     )
   }
 
-  const send = async () => {
+  const sendToWatch = async () => {
     const reachable = await getReachability()
     console.log(reachable ? 'Watch app is reachable' : 'Watch app is not reachable')
     if (!reachable) {
-      send()
+      sendToWatch()
     }
 
     if (reachable) {
@@ -109,18 +143,20 @@ const App = () => {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleMessageFromWatch = (message: any, reply: any) => {
+    messagesRef.current = [ ...messagesRef.current, message.message ]
+    setMessages(messagesRef.current)
+
+    if (reply) {
+      reply({ H3: 'Thanks watch!' })
+    }
+  }
+
   useEffect(() => {
     initNfc()
     initBeacon()
-    const unsubscribe = watchEvents.on('message', (message, reply) => {
-      console.log('received message from watch', message)
-      messagesRef.current = [ ...messagesRef.current, message.message ]
-      setMessages(messagesRef.current)
-
-      if (reply) {
-        reply({ H3: 'Thanks watch!' })
-      }
-    })
+    const unsubscribe = watchEvents.on('message', handleMessageFromWatch)
 
     return () => {
       unsubscribe()
@@ -154,6 +190,27 @@ const App = () => {
                 >
                   <H3 style={styles.btnTxt}>Read NFC</H3>
                 </TouchableOpacity>
+                <Spacer height="1rem" />
+                <TouchableOpacity
+                  onPress={writeNfc}
+                  style={[ styles.btn, globalStyles.alignCenter, globalStyles.justifyCenter ]}
+                >
+                  <H3 style={styles.btnTxt}>Write NFC</H3>
+                </TouchableOpacity>
+                <Spacer height="1rem" />
+                <H4>Tag messages</H4>
+                <Spacer height=".5rem" />
+                <View style={styles.response}>
+                  {
+                    tagMessages.map((m, i) => (
+                      <View key={`tag-message-${i}`}>
+                        <Spacer height=".25rem" />
+                        <H3>{m}</H3>
+                        <Spacer height=".25rem" />
+                      </View>
+                    ))
+                  }
+                </View>
                 <Spacer height="3rem" />
                 <H2 style={styles.titleTxt}>Beacon</H2>
                 <Spacer height="1rem" />
@@ -171,10 +228,10 @@ const App = () => {
                 <H2 style={styles.titleTxt}>With Watch App</H2>
                 <Spacer height="1rem" />
                 <TouchableOpacity
-                  onPress={send}
+                  onPress={sendToWatch}
                   style={[ styles.btn, globalStyles.alignCenter, globalStyles.justifyCenter ]}
                 >
-                  <H3 style={styles.btnTxt}>Watch Message Send</H3>
+                  <H3 style={styles.btnTxt}>Send Message to Watch</H3>
                 </TouchableOpacity>
                 <Spacer height="1rem" />
                 <H4>Message from Watch App</H4>
@@ -183,7 +240,9 @@ const App = () => {
                   {
                     messages.map((mes, i) => (
                       <View key={i}>
+                        <Spacer height=".25rem" />
                         <H3>{mes}</H3>
+                        <Spacer height=".25rem" />
                       </View>
                     ))
                   }
