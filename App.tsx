@@ -5,6 +5,8 @@ import {
   View,
   TouchableOpacity,
   Platform,
+  DeviceEventEmitter,
+  Alert,
 } from 'react-native'
 import {
   sendMessage,
@@ -25,17 +27,25 @@ import globalStyles from './src/utils/style'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Beacons: any = NoTypeBeacons
 
-const region = {
-  identifier: 'ibeacon-test',
-  uuid: '9c8a7cea-b59d-4f74-843a-0f84a567b131',
-}
+const regions = [
+  {
+    identifier: 'ibeacon-test',
+    uuid: '9c8a7cea-b59d-4f74-843a-0f84a567b131',
+  },
+  {
+    identifier: 'SOL_beacon_1',
+    uuid: 'fda50693-a4e2-4fb1-afcf-c6eb07647825',
+  },
+]
 
 const App = () => {
   const [ messages, setMessages ] = useState([])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const messagesRef = useRef<any>([])
 
-  const [ distance, setDistance ] = useState(0)
+  const regionDataRef = useRef<any>([])
+  const [ regionData, setRegionData ] = useState<any>(regionDataRef.current)
+  const [ isWatching, setWatching ] = useState(false)
   const [ tagMessages, setTagMessages ] = useState([])
 
   const cleanUpNfc = () => {
@@ -97,25 +107,45 @@ const App = () => {
   }
 
   const cleanBeacon = () => {
-    Beacons.stopMonitoringForRegion(region)
-    Beacons.stopRangingBeaconsInRegion(region)
+    regions.forEach((region) => {
+      Beacons.stopMonitoringForRegion(region)
+      Beacons.stopRangingBeaconsInRegion(region)
+    })
+    Beacons.stopUpdatingLocation()
+    DeviceEventEmitter.removeAllListeners()
+    setWatching(false)
   }
 
   const initBeacon = async () => {
-    Beacons.requestWhenInUseAuthorization()
+    try {
+      Beacons.getAuthorizationStatus((status: string) => {
+        console.log('permission status', status)
+        if (/authorizedWhenInUse|authorizedAlways/.test(status)) {
+          return
+        }
+        // Beacons.requestWhenInUseAuthorization()
+        Beacons.requestAlwaysAuthorization()
+      })
+    }
+    catch (error) {
+      return false
+    }
   }
 
   const startBeacon = () => {
-    Beacons.startMonitoringForRegion(region)
-    Beacons.startRangingBeaconsInRegion(region)
+    regions.forEach((region) => {
+      Beacons.startMonitoringForRegion(region)
+      Beacons.startRangingBeaconsInRegion(region)
+    })
     Beacons.startUpdatingLocation()
 
-
+    setWatching(true)
+  
     Beacons.BeaconsEventEmitter.addListener(
-      'didDetermineState',
+      'authorizationStatusDidChange',
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (data: any) => {
-        console.log('didDetermineState', data)
+        console.log('authorizationStatusDidChange', data)
       },
     )
     Beacons.BeaconsEventEmitter.addListener(
@@ -123,8 +153,40 @@ const App = () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (data: any) => {
         if (!!data && data.beacons.length > 0) {
-          setDistance(data.beacons[0].distance)
+          const newRegionData = [ ...regionDataRef.current ]
+          const beacon = data.beacons[0]
+          if (newRegionData.filter((d) => d.uuid === beacon.uuid).length <= 0) {
+            regionDataRef.current = [ ...newRegionData, beacon ]
+            setRegionData(regionDataRef.current)
+            return
+          }
+          regionDataRef.current = newRegionData
+            .map((region) => beacon.uuid === region.uuid ? beacon : region)
+          setRegionData(regionDataRef.current)
         }
+      },
+    )
+    // Beacons.BeaconsEventEmitter.addListener(
+    //   'regionDidEnter',
+    //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    //   (data: any) => {
+    //     setEnter(true)
+    //     console.log('regionDidEnter', data)
+    //   },
+    // )
+    // Beacons.BeaconsEventEmitter.addListener(
+    //   'regionDidExit',
+    //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    //   (data: any) => {
+    //     setEnter(false)
+    //     console.log('regionDidExit', data)
+    //   },
+    // )
+    Beacons.BeaconsEventEmitter.addListener(
+      'didDetermineState',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (data: any) => {
+        Alert.alert(data.state, data.identifier)
       },
     )
   }
@@ -215,15 +277,41 @@ const App = () => {
                 <H2 style={styles.titleTxt}>Beacon</H2>
                 <Spacer height="1rem" />
                 <TouchableOpacity
-                  onPress={startBeacon}
+                  onPress={isWatching ? cleanBeacon : startBeacon}
                   style={[ styles.btn, globalStyles.alignCenter, globalStyles.justifyCenter ]}
                 >
-                  <H3 style={styles.btnTxt}>Start Beacon</H3>
+                  <H3 style={styles.btnTxt}>
+                    {
+                      isWatching ? 'Stop Beacon' : 'Start Beacon'
+                    }
+                  </H3>
                 </TouchableOpacity>
-                <Spacer height="1rem" />
-                <View style={styles.response}>
-                  <H3>distance: {distance}</H3>
-                </View>
+                {
+                  regionData.length > 0 && regionData.map((region: any) => (
+                    <View key={region.uuid}>
+                      <Spacer height="1rem" />
+                      <H4>{region.uuid}</H4>
+                      <Spacer height=".5rem" />
+                      <View style={styles.response}>
+                        <H3>distance: {region.distance}</H3>
+                      </View>
+                      <Spacer height=".5rem" />
+                      <View style={styles.response}>
+                        <H3>proximity: {region.proximity}</H3>
+                      </View>
+                    </View>
+                  ))
+                }
+                {/* <View style={isWatching ? { opacity: 1 } : { opacity: 0.4 }}>
+                  <Spacer height="1rem" />
+                  <View style={styles.response}>
+                    <H3>status: {enter ? 'INSIDE' : 'OUTSIDE'}</H3>
+                  </View>
+                  <Spacer height=".5rem" />
+                  <View style={styles.response}>
+                    <H3>distance: {distance}</H3>
+                  </View>
+                </View> */}
                 <Spacer height="3rem" />
                 <H2 style={styles.titleTxt}>With Watch App</H2>
                 <Spacer height="1rem" />
