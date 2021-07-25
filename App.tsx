@@ -15,8 +15,11 @@ import {
 } from 'react-native-watch-connectivity'
 import NfcManager, { NfcEvents, NfcTech, Ndef } from 'react-native-nfc-manager'
 import NoTypeBeacons from 'react-native-beacons-manager'
+import Geolocation from '@react-native-community/geolocation'
 import EStyleSheet from 'react-native-extended-stylesheet'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
+
+import Notifications, { checkNotificationPermission } from './src/utils/notification'
 
 import './src/constants/estyles'
 
@@ -26,6 +29,28 @@ import globalStyles from './src/utils/style'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const Beacons: any = NoTypeBeacons
+
+const styles = EStyleSheet.create({
+  titleTxt: {
+    color: '#ff743d',
+  },
+  btn: {
+    backgroundColor: '#08b79b',
+    borderRadius: 22,
+    paddingVertical: '.75rem',
+    paddingHorizontal: '2rem',
+    minWidth: '7rem',
+  },
+  btnTxt: {
+    color: '$white',
+  },
+  response: {
+    backgroundColor: '#eaeaea',
+    borderRadius: 10,
+    paddingVertical: '.75rem',
+    paddingHorizontal: '1rem',
+  },
+})
 
 const regions = [
   {
@@ -38,14 +63,35 @@ const regions = [
   },
 ]
 
+const TARGET_LOCATION = {
+  lat: 35.66328287640385,
+  lng: 139.66925727669064,
+}
+const RADIUS = 10
+const radians = (deg: number) => {
+  return deg * Math.PI / 180
+}
+const getDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+  return 6371
+    * Math.acos(Math.cos(radians(lat1))
+      * Math.cos(radians(lat2))
+      * Math.cos(radians(lng2) - radians(lng1))
+      + Math.sin(radians(lat1))
+      * Math.sin(radians(lat2))) * 1000
+}
+
 const App = () => {
   const [ messages, setMessages ] = useState([])
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const messagesRef = useRef<any>([])
-
   const regionDataRef = useRef<any>([])
+  const watchId = useRef<number>(0)
+  const isEnterRef = useRef(false)
+
   const [ regionData, setRegionData ] = useState<any>(regionDataRef.current)
-  const [ isWatching, setWatching ] = useState(false)
+  const [ isWatchingBeacon, setWatchingBeacon ] = useState(false)
+  const [ isWatchingLocation, setWatchingLocation ] = useState(false)
+  const [ distance, setDistance ] = useState(0)
   const [ tagMessages, setTagMessages ] = useState([])
 
   const cleanUpNfc = () => {
@@ -113,7 +159,7 @@ const App = () => {
     })
     Beacons.stopUpdatingLocation()
     DeviceEventEmitter.removeAllListeners()
-    setWatching(false)
+    setWatchingBeacon(false)
   }
 
   const initBeacon = async () => {
@@ -139,7 +185,7 @@ const App = () => {
     })
     Beacons.startUpdatingLocation()
 
-    setWatching(true)
+    setWatchingBeacon(true)
   
     Beacons.BeaconsEventEmitter.addListener(
       'authorizationStatusDidChange',
@@ -166,27 +212,48 @@ const App = () => {
         }
       },
     )
-    // Beacons.BeaconsEventEmitter.addListener(
-    //   'regionDidEnter',
-    //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    //   (data: any) => {
-    //     setEnter(true)
-    //     console.log('regionDidEnter', data)
-    //   },
-    // )
-    // Beacons.BeaconsEventEmitter.addListener(
-    //   'regionDidExit',
-    //   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    //   (data: any) => {
-    //     setEnter(false)
-    //     console.log('regionDidExit', data)
-    //   },
-    // )
     Beacons.BeaconsEventEmitter.addListener(
       'didDetermineState',
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (data: any) => {
         Alert.alert(data.state, data.identifier)
+      },
+    )
+  }
+
+  const cleanWatch = () => {
+    Geolocation.clearWatch(watchId.current)
+    setWatchingLocation(false)
+  }
+
+  const startWatch = () => {
+    setWatchingLocation(true)
+    watchId.current = Geolocation.watchPosition(
+      (location) => {
+        const { latitude, longitude } = location.coords
+        const distance = getDistance(latitude, longitude, TARGET_LOCATION.lat, TARGET_LOCATION.lng)
+        const isEnter = !!(RADIUS - distance)
+        setDistance(distance)
+        console.log(distance, 'enter: ', isEnter)
+        if (isEnterRef.current === isEnter) {
+          return
+        }
+        Alert.alert(isEnter ? 'Enter!!!' : 'Exit:)')
+        Notifications.scheduleNotificationAsync({
+          content: {
+            title: isEnter ? 'Enter!!!' : 'Exit:)',
+            body: `distance: ${distance}`,
+          },
+          trigger: null,
+        })
+        isEnterRef.current = isEnter
+      },
+      (error) => console.log(error),
+      {
+        distanceFilter: 0,
+        maximumAge: 2000,
+        enableHighAccuracy: false,
+        useSignificantChanges: false,
       },
     )
   }
@@ -215,9 +282,19 @@ const App = () => {
     }
   }
 
+  const initNotif = async () => {
+    const hasNotifPermission = await checkNotificationPermission()
+    console.log('hasNotifPermission: ', hasNotifPermission)
+
+    if (!hasNotifPermission) {
+      return
+    }
+  }
+
   useEffect(() => {
     initNfc()
     initBeacon()
+    initNotif()
     const unsubscribe = watchEvents.on('message', handleMessageFromWatch)
 
     return () => {
@@ -244,6 +321,8 @@ const App = () => {
                 <Spacer height="3rem" />
                 <H1>React Native with watch app</H1>
                 <Spacer height="2rem" />
+
+                {/*  nfc test */}
                 <H2 style={styles.titleTxt}>NFC</H2>
                 <Spacer height="1rem" />
                 <TouchableOpacity
@@ -274,15 +353,17 @@ const App = () => {
                   }
                 </View>
                 <Spacer height="3rem" />
+
+                {/* beacon test */}
                 <H2 style={styles.titleTxt}>Beacon</H2>
                 <Spacer height="1rem" />
                 <TouchableOpacity
-                  onPress={isWatching ? cleanBeacon : startBeacon}
+                  onPress={isWatchingBeacon ? cleanBeacon : startBeacon}
                   style={[ styles.btn, globalStyles.alignCenter, globalStyles.justifyCenter ]}
                 >
                   <H3 style={styles.btnTxt}>
                     {
-                      isWatching ? 'Stop Beacon' : 'Start Beacon'
+                      isWatchingBeacon ? 'Stop Beacon' : 'Start Beacon'
                     }
                   </H3>
                 </TouchableOpacity>
@@ -302,17 +383,30 @@ const App = () => {
                     </View>
                   ))
                 }
-                {/* <View style={isWatching ? { opacity: 1 } : { opacity: 0.4 }}>
-                  <Spacer height="1rem" />
-                  <View style={styles.response}>
-                    <H3>status: {enter ? 'INSIDE' : 'OUTSIDE'}</H3>
-                  </View>
-                  <Spacer height=".5rem" />
-                  <View style={styles.response}>
-                    <H3>distance: {distance}</H3>
-                  </View>
-                </View> */}
                 <Spacer height="3rem" />
+
+                {/* geofence test */}
+                <H2 style={styles.titleTxt}>Geofencing</H2>
+                <Spacer height="1rem" />
+                <TouchableOpacity
+                  onPress={isWatchingLocation ? cleanWatch : startWatch}
+                  style={[ styles.btn, globalStyles.alignCenter, globalStyles.justifyCenter ]}
+                >
+                  <H3 style={styles.btnTxt}>
+                    {
+                      isWatchingLocation ? 'Stop Geofence' : 'Start Geofence'
+                    }
+                  </H3>
+                </TouchableOpacity>
+                <Spacer height="1rem" />
+                <H4>Distance</H4>
+                <Spacer height=".5rem" />
+                <View style={styles.response}>
+                  <H3>distance: {distance}m</H3>
+                </View>
+                <Spacer height="3rem" />
+
+                {/* messaging with watch app test */}
                 <H2 style={styles.titleTxt}>With Watch App</H2>
                 <Spacer height="1rem" />
                 <TouchableOpacity
@@ -343,27 +437,5 @@ const App = () => {
     </SafeAreaProvider>
   )
 }
-
-const styles = EStyleSheet.create({
-  titleTxt: {
-    color: '#ff743d',
-  },
-  btn: {
-    backgroundColor: '#08b79b',
-    borderRadius: 22,
-    paddingVertical: '.75rem',
-    paddingHorizontal: '2rem',
-    minWidth: '7rem',
-  },
-  btnTxt: {
-    color: '$white',
-  },
-  response: {
-    backgroundColor: '#eaeaea',
-    borderRadius: 10,
-    paddingVertical: '.75rem',
-    paddingHorizontal: '1rem',
-  },
-})
 
 export default App
