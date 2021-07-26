@@ -64,10 +64,10 @@ const regions = [
 ]
 
 const TARGET_LOCATION = {
-  lat: 35.66328287640385,
-  lng: 139.66925727669064,
+  lat: 35.66299429811237,
+  lng: 139.6686254578199,
 }
-const RADIUS = 10
+const RADIUS = 100
 const radians = (deg: number) => {
   return deg * Math.PI / 180
 }
@@ -232,7 +232,7 @@ const App = () => {
       (location) => {
         const { latitude, longitude } = location.coords
         const distance = getDistance(latitude, longitude, TARGET_LOCATION.lat, TARGET_LOCATION.lng)
-        const isEnter = !!(RADIUS - distance)
+        const isEnter = (RADIUS - distance) > 0
         setDistance(distance)
         console.log(distance, 'enter: ', isEnter)
         if (isEnterRef.current === isEnter) {
