@@ -25,13 +25,12 @@ const WithWatch = () => {
     console.log(reachable ? 'Watch app is reachable' : 'Watch app is not reachable')
     if (!reachable) {
       sendToWatch()
+      return
     }
 
-    if (reachable) {
-      sendMessage({ message: 'Hello watch!' }, (reply) => {
-        console.log(reply)
-      })
-    }
+    sendMessage({ message: 'Hello watch!' }, (reply) => {
+      console.log(reply)
+    })
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
