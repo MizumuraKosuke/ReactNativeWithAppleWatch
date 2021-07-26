@@ -1,8 +1,5 @@
 import React from 'react'
-import {
-  StatusBar,
-  View,
-} from 'react-native'
+import { StatusBar } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 import './src/constants/estyles'

@@ -1,9 +1,10 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
   ScrollView,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { checkNotificationPermission } from '../../utils/notification'
 
 import Nfc from './nfc'
 import Beacon from './beacon'
@@ -17,6 +18,15 @@ import styles from './experience.style'
 import globalStyles from '../../utils/style'
 
 const App = () => {
+  const initNotif = async () => {
+    const hasNotifPermission = await checkNotificationPermission()
+    console.log('hasNotifPermission: ', hasNotifPermission)
+  }
+
+  useEffect(() => {
+    initNotif()
+  }, [])
+
   return (
     <ScrollView
       style={[

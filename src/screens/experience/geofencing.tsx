@@ -6,7 +6,7 @@ import {
 } from 'react-native'
 import Geolocation from '@react-native-community/geolocation'
 
-import Notifications, { checkNotificationPermission } from '../../utils/notification'
+import Notifications from '../../utils/notification'
 
 import Spacer from '../../components/spacer'
 import { H2, H3, H4 } from '../../components/text'
@@ -39,8 +39,11 @@ const Geofencing = () => {
   const [ distance, setDistance ] = useState(0)
 
   const cleanWatch = () => {
-    Geolocation.clearWatch(watchId.current)
     setWatchingLocation(false)
+    if (!watchId.current) {
+      return
+    }
+    Geolocation.clearWatch(watchId.current)
   }
 
   const startWatch = () => {
@@ -75,17 +78,10 @@ const Geofencing = () => {
     )
   }
 
-  const initNotif = async () => {
-    const hasNotifPermission = await checkNotificationPermission()
-    console.log('hasNotifPermission: ', hasNotifPermission)
-
-    if (!hasNotifPermission) {
-      return
-    }
-  }
-
   useEffect(() => {
-    initNotif()
+    return () => {
+      cleanWatch()
+    }
   }, [])
 
   return (
