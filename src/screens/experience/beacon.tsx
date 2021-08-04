@@ -88,11 +88,10 @@ const Beacon = () => {
         if (!!data && data.beacons.length > 0) {
           const newRegionData = [ ...regionDataRef.current ]
           const beacon = data.beacons[0]
-          if (beacon.distance <= 5) {
-            console.log(`${beacon.uuid} distance: ${beacon.distance}`)
+          if (beacon.distance >= 0 && beacon.distance <= 5) {
             if (!isEnter.current) {
               isEnter.current = true
-              console.log('notif!')
+              Alert.alert('near door', `${beacon.uuid} distance: ${beacon.distance}`)
               Notifications.scheduleNotificationAsync({
                 content: {
                   title: 'near door',
@@ -102,7 +101,7 @@ const Beacon = () => {
               })
             }
           }
-          else {
+          if (beacon.distance > 5) {
             isEnter.current = false
           }
           if (newRegionData.filter((d) => d.uuid === beacon.uuid).length <= 0) {
@@ -120,8 +119,8 @@ const Beacon = () => {
       'didDetermineState',
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (data: any) => {
-        console.log(data.state, data.identifier)
         if (data.state === 'outside') {
+          Alert.alert('outside')
           isEnter.current = false
         }
         // Alert.alert(data.state, data.identifier)
