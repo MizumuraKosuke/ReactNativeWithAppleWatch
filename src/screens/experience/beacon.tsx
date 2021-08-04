@@ -7,6 +7,8 @@ import {
 } from 'react-native'
 import NoTypeBeacons from 'react-native-beacons-manager'
 
+import Notifications from '../../utils/notification'
+
 import Spacer from '../../components/spacer'
 import { H2, H3, H4 } from '../../components/text'
 
@@ -32,6 +34,7 @@ const Beacon = () => {
 
   const [ regionData, setRegionData ] = useState<any>(regionDataRef.current)
   const [ isWatchingBeacon, setWatchingBeacon ] = useState(false)
+  const isEnter = useRef(false)
 
   const cleanBeacon = () => {
     regions.forEach((region) => {
@@ -39,7 +42,9 @@ const Beacon = () => {
       Beacons.stopRangingBeaconsInRegion(region)
     })
     Beacons.stopUpdatingLocation()
+    Beacons.allowsBackgroundLocationUpdates(false)
     DeviceEventEmitter.removeAllListeners()
+    isEnter.current = false
     setWatchingBeacon(false)
   }
 
@@ -65,6 +70,7 @@ const Beacon = () => {
       Beacons.startRangingBeaconsInRegion(region)
     })
     Beacons.startUpdatingLocation()
+    Beacons.allowsBackgroundLocationUpdates(true)
 
     setWatchingBeacon(true)
   
@@ -82,6 +88,23 @@ const Beacon = () => {
         if (!!data && data.beacons.length > 0) {
           const newRegionData = [ ...regionDataRef.current ]
           const beacon = data.beacons[0]
+          if (beacon.distance <= 5) {
+            console.log(`${beacon.uuid} distance: ${beacon.distance}`)
+            if (!isEnter.current) {
+              isEnter.current = true
+              console.log('notif!')
+              Notifications.scheduleNotificationAsync({
+                content: {
+                  title: 'near door',
+                  body: `${beacon.uuid} distance: ${beacon.distance}`,
+                },
+                trigger: null,
+              })
+            }
+          }
+          else {
+            isEnter.current = false
+          }
           if (newRegionData.filter((d) => d.uuid === beacon.uuid).length <= 0) {
             regionDataRef.current = [ ...newRegionData, beacon ]
             setRegionData(regionDataRef.current)
@@ -97,7 +120,11 @@ const Beacon = () => {
       'didDetermineState',
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (data: any) => {
-        Alert.alert(data.state, data.identifier)
+        console.log(data.state, data.identifier)
+        if (data.state === 'outside') {
+          isEnter.current = false
+        }
+        // Alert.alert(data.state, data.identifier)
       },
     )
   }
